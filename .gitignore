@@ -36,5 +36,6 @@ Thumbs.db
 .claude/
 skills-lock.json
 
-# Docs (not yet committed)
-docs/
+# Docs
+app/CLAUDE.md
+tests/CLAUDE.md

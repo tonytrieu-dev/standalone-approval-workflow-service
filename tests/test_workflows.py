@@ -23,7 +23,7 @@ def create_workflow(**overrides) -> dict:
         "timeout_minutes": 30,
         **overrides,
     }
-    response = client.post("/workflows", json=payload)
+    response = client.post("/v1/workflows", json=payload)
     assert response.status_code == 201
     return response.json()
 
@@ -39,7 +39,7 @@ def test_get_pending_workflow():
     created_workflow = create_workflow()
     workflow_id = created_workflow["workflow_id"]
 
-    get_response = client.get(f"/workflows/{workflow_id}")
+    get_response = client.get(f"/v1/workflows/{workflow_id}")
     assert get_response.status_code == 200
     fetched_workflow = get_response.json()
     assert fetched_workflow["workflow_id"] == workflow_id
@@ -53,7 +53,7 @@ def test_get_pending_workflow():
 def test_workflow_can_be_approved():
     workflow_id = create_workflow()["workflow_id"]
 
-    approve_response = client.post(f"/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
+    approve_response = client.post(f"/v1/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
     assert approve_response.status_code == 200
     approved_workflow = approve_response.json()
     assert approved_workflow["status"] == "APPROVED"
@@ -64,7 +64,7 @@ def test_workflow_can_be_approved():
 def test_workflow_can_be_rejected():
     workflow_id = create_workflow()["workflow_id"]
 
-    reject_response = client.post(f"/workflows/{workflow_id}/reject", json={"reviewed_by": "bob"})
+    reject_response = client.post(f"/v1/workflows/{workflow_id}/reject", json={"reviewed_by": "bob"})
     assert reject_response.status_code == 200
     rejected_workflow = reject_response.json()
     assert rejected_workflow["status"] == "REJECTED"
@@ -75,11 +75,11 @@ def test_workflow_can_be_rejected():
 def test_double_approve_is_idempotent():
     workflow_id = create_workflow()["workflow_id"]
 
-    first_approved_response = client.post(f"/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
+    first_approved_response = client.post(f"/v1/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
     assert first_approved_response.status_code == 200
     assert first_approved_response.json()["status"] == "APPROVED"
 
-    second_approved_response = client.post(f"/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
+    second_approved_response = client.post(f"/v1/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
     assert second_approved_response.status_code == 200
     assert second_approved_response.json()["status"] == "APPROVED"
 
@@ -87,9 +87,9 @@ def test_double_approve_is_idempotent():
 def test_approve_after_reject_returns_conflict():
     workflow_id = create_workflow()["workflow_id"]
 
-    client.post(f"/workflows/{workflow_id}/reject", json={"reviewed_by": "bob"})
+    client.post(f"/v1/workflows/{workflow_id}/reject", json={"reviewed_by": "bob"})
 
-    approve_after_reject_response = client.post(f"/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
+    approve_after_reject_response = client.post(f"/v1/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
     assert approve_after_reject_response.status_code == 409
     conflict_detail = approve_after_reject_response.json()["detail"]
     assert conflict_detail["error"] == "workflow already resolved"
@@ -99,7 +99,7 @@ def test_approve_after_reject_returns_conflict():
 def test_expired_workflow_is_timed_out():
     workflow_id = create_workflow(timeout_minutes=0)["workflow_id"]
 
-    get_response = client.get(f"/workflows/{workflow_id}")
+    get_response = client.get(f"/v1/workflows/{workflow_id}")
     assert get_response.status_code == 200
     assert get_response.json()["status"] == "TIMED_OUT"
 
@@ -107,9 +107,9 @@ def test_expired_workflow_is_timed_out():
 def test_approve_after_timeout_returns_conflict():
     workflow_id = create_workflow(timeout_minutes=0)["workflow_id"]
 
-    client.get(f"/workflows/{workflow_id}")
+    client.get(f"/v1/workflows/{workflow_id}")
 
-    approve_after_timeout_response = client.post(f"/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
+    approve_after_timeout_response = client.post(f"/v1/workflows/{workflow_id}/approve", json={"reviewed_by": "alice"})
     assert approve_after_timeout_response.status_code == 409
     conflict_detail = approve_after_timeout_response.json()["detail"]
     assert conflict_detail["error"] == "workflow already resolved"
@@ -117,12 +117,12 @@ def test_approve_after_timeout_returns_conflict():
 
 
 def test_unknown_workflow_returns_404():
-    get_response = client.get("/workflows/does-not-exist")
+    get_response = client.get("/v1/workflows/does-not-exist")
     assert get_response.status_code == 404
 
 
 def test_negative_timeout_minutes_returns_422():
-    create_response = client.post("/workflows", json={
+    create_response = client.post("/v1/workflows", json={
         "action": "terminate-ec2-instance",
         "requested_by": "agent-1",
         "timeout_minutes": -1,

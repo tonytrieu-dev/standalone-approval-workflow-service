@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-
 from fastapi import FastAPI, HTTPException
 
 from app.models import (
@@ -13,7 +12,7 @@ from app.models import (
 )
 from app.store import store
 
-app = FastAPI(title="Approval Workflow Service")
+app = FastAPI(title="Standalone Approval Workflow Service")
 
 
 def not_found_error(workflow_id: str) -> HTTPException:
@@ -68,7 +67,7 @@ def resolve_workflow(workflow_id: str, target_status: WorkflowStatus, reviewed_b
     return to_detail_response(record)
 
 
-@app.post("/workflows", response_model=CreateWorkflowResponse, status_code=201)
+@app.post("/v1/workflows", response_model=CreateWorkflowResponse, status_code=201)
 def create_workflow(workflow_request: CreateWorkflowRequest) -> CreateWorkflowResponse:
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=workflow_request.timeout_minutes)
@@ -90,17 +89,17 @@ def create_workflow(workflow_request: CreateWorkflowRequest) -> CreateWorkflowRe
     )
 
 
-@app.get("/workflows/{workflow_id}", response_model=WorkflowDetailResponse)
+@app.get("/v1/workflows/{workflow_id}", response_model=WorkflowDetailResponse)
 def get_workflow(workflow_id: str) -> WorkflowDetailResponse:
     record = fetch_and_timeout(workflow_id)
     return to_detail_response(record)
 
 
-@app.post("/workflows/{workflow_id}/approve", response_model=WorkflowDetailResponse)
+@app.post("/v1/workflows/{workflow_id}/approve", response_model=WorkflowDetailResponse)
 def approve_workflow(workflow_id: str, review_request: ReviewRequest) -> WorkflowDetailResponse:
     return resolve_workflow(workflow_id, WorkflowStatus.APPROVED, review_request.reviewed_by)
 
 
-@app.post("/workflows/{workflow_id}/reject", response_model=WorkflowDetailResponse)
+@app.post("/v1/workflows/{workflow_id}/reject", response_model=WorkflowDetailResponse)
 def reject_workflow(workflow_id: str, review_request: ReviewRequest) -> WorkflowDetailResponse:
     return resolve_workflow(workflow_id, WorkflowStatus.REJECTED, review_request.reviewed_by)

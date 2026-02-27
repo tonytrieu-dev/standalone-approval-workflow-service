@@ -1,4 +1,4 @@
-# approval-workflow-service
+# standalone-approval-workflow-service
 
 A standalone human-in-the-loop approval service for AI agent platforms. When automated agents reach sensitive operations (terminating cloud resources, resetting credentials, etc.), they pause execution and request human approval before proceeding.
 
@@ -6,11 +6,17 @@ A standalone human-in-the-loop approval service for AI agent platforms. When aut
 
 The service implements a **pause-and-resume** pattern:
 
-1. Agent calls `POST /workflows` with a description of the action needing approval
+1. Agent calls `POST /v1/workflows` with a description of the action needing approval
 2. Service persists the request and returns a `workflow_id`
-3. Agent polls `GET /workflows/{id}` for status changes
-4. A human approver calls `POST /workflows/{id}/approve` or `POST /workflows/{id}/reject`
+3. Agent polls `GET /v1/workflows/{id}` for status changes
+4. A human approver calls `POST /v1/workflows/{id}/approve` or `POST /v1/workflows/{id}/reject`
 5. Agent resumes or halts based on the decision; requests expire after a configurable timeout
+
+## Quick Start
+
+1. Install dependencies: `uv sync`
+2. Run the server: `uv run uvicorn app.main:app --reload`
+3. Run tests: `uv run pytest tests/ -v`
 
 ## Demo Agent
 
@@ -24,42 +30,24 @@ uv run uvicorn app.main:app --reload
 uv run python agent_demo.py
 ```
 
-The agent prints the `workflow_id` and polls every 3 seconds. In a third terminal, approve or reject:
+The agent prints the `workflow_id` and polls every 5 seconds. In a third terminal, approve or reject:
 
 ```bash
-curl -X POST http://localhost:8000/workflows/<id>/approve \
-  -H "Content-Type: application/json" \
-  -d '{"reviewed_by": "alice"}'
+# Terminal 3 — approve
+curl -X POST http://localhost:8000/v1/workflows/<id>/approve -H "Content-Type: application/json" -d "{\"reviewed_by\": \"tony\"}"
+
+# Terminal 3 — or reject
+curl -X POST http://localhost:8000/v1/workflows/<id>/reject -H "Content-Type: application/json" -d "{\"reviewed_by\": \"tony\"}"
 ```
 
-The demo uses a 5-minute timeout — if no one responds, the agent prints `TIMED_OUT` and aborts.
-
-## Running Locally
-
-```bash
-# Install dependencies
-uv sync
-
-# Start the server
-uv run uvicorn app.main:app --reload
-
-# Run tests
-uv run pytest tests/ -v
-```
+The demo uses a 5-minute timeout. If no one responds, the agent prints `TIMED_OUT` and aborts.
 
 ## API Reference
 
 ### Create a workflow approval request
 
 ```bash
-curl -X POST http://localhost:8000/workflows \
-  -H "Content-Type: application/json" \
-  -d '{
-    "action": "terminate EC2 instance i-abc123",
-    "requested_by": "infra-agent",
-    "context": {"instance_id": "i-abc123", "region": "us-east-1"},
-    "timeout_minutes": 30
-  }'
+curl -X POST http://localhost:8000/v1/workflows -H "Content-Type: application/json" -d "{\"action\": \"terminate EC2 instance i-abc123\", \"requested_by\": \"infra-agent\", \"context\": {\"instance_id\": \"i-abc123\", \"region\": \"us-east-1\"}, \"timeout_minutes\": 30}"
 ```
 
 **Request fields:**
@@ -80,7 +68,7 @@ curl -X POST http://localhost:8000/workflows \
 ### Poll for status
 
 ```bash
-curl http://localhost:8000/workflows/{workflow_id}
+curl http://localhost:8000/v1/workflows/{workflow_id}
 ```
 
 **Response (200):**
@@ -103,20 +91,16 @@ Returns 404 if the `workflow_id` does not exist.
 ### Approve
 
 ```bash
-curl -X POST http://localhost:8000/workflows/{workflow_id}/approve \
-  -H "Content-Type: application/json" \
-  -d '{"reviewed_by": "alice"}'
+curl -X POST http://localhost:8000/v1/workflows/{workflow_id}/approve -H "Content-Type: application/json" -d "{\"reviewed_by\": \"alice\"}"
 ```
 
 ### Reject
 
 ```bash
-curl -X POST http://localhost:8000/workflows/{workflow_id}/reject \
-  -H "Content-Type: application/json" \
-  -d '{"reviewed_by": "alice"}'
+curl -X POST http://localhost:8000/v1/workflows/{workflow_id}/reject -H "Content-Type: application/json" -d "{\"reviewed_by\": \"alice\"}"
 ```
 
-Both approve and reject return the full workflow detail response (same shape as `GET /workflows/{id}`).
+Both approve and reject return the full workflow detail response (same shape as `GET /v1/workflows/{id}`).
 
 **Error response (409)** — returned when the workflow is already resolved (e.g. already approved, rejected, or timed out):
 ```json
@@ -128,9 +112,8 @@ Both approve and reject return the full workflow detail response (same shape as 
 }
 ```
 
-## Architecture Notes
+## Further Reading
 
-- **In-memory store**: The current implementation uses a dict-backed store. Swap `app/store.py` for a SQLAlchemy-backed implementation for persistence across restarts.
-- **Lazy timeout**: Expired requests are marked `TIMED_OUT` on first read rather than via a background sweep, keeping the implementation simple. The timeout check runs on `GET`, approve, and reject — preventing race conditions where a reviewer acts on a request that expired moments earlier.
-- **Idempotency**: Approving an already-approved workflow (same decision) returns 200. Conflicting decisions (approve after reject, or any action after timeout) return 409 with a `current_status` field indicating the actual state.
-- **Statuses**: `PENDING` → `APPROVED` | `REJECTED` | `TIMED_OUT`
+- [`docs/design-decisions.md`](docs/design-decisions.md) — architectural choices and rationale
+- [`docs/edge-cases.md`](docs/edge-cases.md) — handled and unhandled edge cases
+- [`docs/scope.md`](docs/scope.md) — what was built, what was deferred, and why
