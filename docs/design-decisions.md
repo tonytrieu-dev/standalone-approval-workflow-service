@@ -36,7 +36,7 @@ The other reason is there are no real users yet. Losing in-flight approvals on a
 
 Approving an already-approved workflow returns 200. Approving a rejected one returns 409.
 
-The difference is intentional. A double-approve is almost always a network retry where the first response got lost. Returning success is the right call. But approving after a rejection is a real conflict the caller needs to know about, so it gets a 409 with the current status in the body.
+This difference is intentional. A double-approve is almost always a network retry where the first response got lost. Returning success makes the operation idempotent and retry-safe. Approving after rejection is a true state conflict, so 409 signals the issue with the current status in the response body.
 
 ### Pydantic for API, Dataclass for Storage
 
