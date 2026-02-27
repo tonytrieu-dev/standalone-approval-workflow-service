@@ -1,6 +1,6 @@
 # Standalone Approval Workflow Service
 
-A standalone human-in-the-loop approval service for AI agent platforms. When automated agents reach sensitive operations (terminating cloud resources, resetting credentials, etc.), they pause execution and request human approval before proceeding.
+A standalone human-in-the-loop approval workflow service for AI agent platforms. When automated agents reach sensitive operations (terminating cloud resources, resetting credentials, etc.), they pause execution and request human approval before proceeding.
 
 ## Overview
 
