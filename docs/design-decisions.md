@@ -18,7 +18,7 @@ Agents poll `GET /workflows/{id}` to check for a decision rather than waiting fo
 
 The tradeoff is the agent might be a few seconds late to notice a decision, but human approval takes minutes at minimum so that doesn't matter in practice.
 
-You can see this in `agent_demo.py`. The agent polls every 3 seconds and reacts the moment a decision comes back. The service doesn't need to know anything about the agent for that to work.
+You can see this in `agent_demo.py`. The agent polls every 5 seconds and reacts the moment a decision comes back. The service doesn't need to know anything about the agent for that to work.
 
 ### Lazy Timeout
 

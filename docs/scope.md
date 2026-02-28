@@ -10,10 +10,10 @@ The approval lifecycle is `PENDING → APPROVED | REJECTED | TIMED_OUT`. Every e
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /workflows` | Create an approval request; returns `workflow_id` and `expires_at` |
-| `GET /workflows/{id}` | Poll for status; applies lazy timeout inline |
-| `POST /workflows/{id}/approve` | Human approves; idempotent on re-approval |
-| `POST /workflows/{id}/reject` | Human rejects; idempotent on re-rejection |
+| `POST /v1/workflows` | Create an approval request; returns `workflow_id` and `expires_at` |
+| `GET /v1/workflows/{id}` | Poll for status; applies lazy timeout inline |
+| `POST /v1/workflows/{id}/approve` | Human approves; idempotent on re-approval |
+| `POST /v1/workflows/{id}/reject` | Human rejects; idempotent on re-rejection |
 
 These four cover the full loop: an agent creates a request, polls until there's an answer, and a human makes the call.
 

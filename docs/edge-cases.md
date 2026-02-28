@@ -12,7 +12,7 @@ Approving an already-approved workflow returns `200` unchanged. This covers the 
 The timeout check runs before the approval logic. So if someone clicks approve on an expired workflow, it gets marked `TIMED_OUT` first, then the handler sees it's no longer `PENDING` and returns `409`. The reviewer gets a real error rather than a silent success the agent would never see.
 
 ### Unknown Workflow ID
-Any request with a `workflow_id` that doesn't exist returns `404`. Covers typos, stale links, wrong environment. All four endpoints share the same lookup helper.
+Any request with a `workflow_id` that doesn't exist returns `404`. Covers typos, stale links, wrong environment. The three read/resolve endpoints (`GET`, approve, reject) share the same lookup helper; the create endpoint has nothing to look up.
 
 ### Zero-Minute Timeout
 `timeout_minutes=0` creates a record with `expires_at` already in the past. The first GET (or approve/reject) immediately marks it `TIMED_OUT`. This is also how the tests verify timeout behavior without mocking the clock or actually waiting.
@@ -46,7 +46,7 @@ Every workflow lives in the dict forever regardless of its status. For a low-vol
 If an agent polls every 60 seconds and the timeout window is 2 minutes, it might only check once or twice before the window closes. Nothing in the API enforces a sensible poll rate. A good rule of thumb is polling at `timeout_minutes / 10` seconds with a floor of 5 seconds, but that should be documented in the API reference once one exists.
 
 ### Agent Crashes and Never Polls
-If the agent that created a workflow dies and never comes back, the record just sits as `PENDING` indefinitely even after expiry. A human trying to approve it would get a 409 after lazy timeout, but nobody gets notified the request is orphaned. A background sweep that fires a cancellation callback when a workflow goes silent past its expiry would handle this, but that's a v2 problem.
+If the agent that created a workflow dies and never comes back, the record just sits as `PENDING` indefinitely even after expiry. A human trying to approve it before expiry succeeds silently — the workflow resolves but no one resumes. A human trying to approve it after expiry gets a 409 via lazy timeout. Either way, nobody gets notified the request is orphaned. A background sweep that fires a cancellation callback when a workflow goes silent past its expiry would handle this, but that's a v2 problem.
 
 ### Clock Skew Across Multiple Instances
 Not an issue now since the in-memory store can't be shared across instances. But on multiple machines, each using its own `datetime.now()` for expiry checks, the same workflow could be `PENDING` on one box and `TIMED_OUT` on another depending on which handles the request. Using the database server's clock for all time comparisons is the standard fix.
