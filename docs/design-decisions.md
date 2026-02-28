@@ -4,7 +4,7 @@
 
 AI agents need a way to stop, ask a human for permission, and then continue (or not) based on the answer. I focused on getting that loop right before anything else.
 
-This pattern is familiar from ScheduleBud, where my AI agent requires explicit user confirmation before executing destructive operations like batch deletes, a synchronous version of the same pause-and-resume concept. The key difference here is the async gap across time and people, which is what drives every design decision below.
+This pattern is familiar from ScheduleBud, where my AI agent requires explicit user confirmation before executing a destructive operation such as a delete, a synchronous version of the same pause-and-resume concept. The key difference here is the async gap across time and people, which is what drives every design decision below.
 
 ---
 
